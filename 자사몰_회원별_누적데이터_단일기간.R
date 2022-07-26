@@ -1,6 +1,6 @@
 # 4-6월 간 회원 데이터 등, cafe24를 통해 다운받은 파일을 입력하면,
 # 해당 기간의 데이터 상에서
-# 자사몰 회원별 [첫주문번호,첫주문일자,평균주문주기,ID,총주문금액,주문횟수]를 결과 파일로 출력해준다. 
+# 자사몰 회원별 [첫주문번호,첫주문일자,평균주문주기,ID,총주문금액,주문횟수]를 결과 파일로 출력해준다.
 
 library(dplyr)
 
@@ -9,11 +9,12 @@ setwd('/Users/jungwooseop/모시공/행사/2022 하계 인턴십/문서/엑셀/�
 dir_name <- getwd()
 
 # 불러올 데이터 파일명 line13 '' 사이에 입력 / 위에 작성한 폴더안에 존재하는 파일이어야 함
-# 결과 파일명 변경 필요 시 line14~line16 '' 사이 값 수정
+# 결과 파일명 변경 필요 시 line14~line17 '' 사이 값 수정
 input_file <- '20.10.21-20.12.csv'
 report1 <- '회원별_누적데이터.csv'
 report2 <- '평균주문주기별 회원 수.csv'
 report3 <- '주문횟수별 회원 수.csv'
+report4 <- '회원별_주문일시_누적데이터.csv'
 df <- read.csv(input_file, header=T)
 
 
@@ -29,8 +30,6 @@ df[,"주문횟수"] <- NA
 # 전처리 - 총 결제금액이 0인 데이터 제거
 df$총.결제금액[df$총.결제금액 == 0] <- NA
 df <- df[!is.na(df$총.결제금액),]
-
-################################### Report1 ###################################
 
 n <- length(df$주문번호)
 
@@ -52,13 +51,62 @@ df$주문일시<-as.Date(df$주문일시, '%Y-%m-%d')
 # 총 주문자 수
 all_ID_num <- length(unique(df$주문자ID))
 
-## Result
+# Create the function.
+countmode <- function(v) {
+  uniqv <- unique(v)
+  charv<-uniqv[which.max(tabulate(match(v, uniqv)))]
+  length(which(v==charv))
+}
+
+# #################### 회원별 주문일시 저장할 공간 생성
+# # ncol=다른 주문번호 같은 아이디 최빈값의 개수, nrow=ID개수
+m <- matrix(NA, ncol = countmode(df$주문자ID), nrow = length(unique(df$주문자ID)))
+df_report4 <- as.data.frame(m)
+names(df_report4) <- c(1:ncol(df_report4))
+df_report4 <- cbind(ID=unique(df$주문자ID),df_report4)
+
+
+
+
+#################### Result
 # 회원별 월간 총 결제금액 연산
 n <- length(df$주문자ID)
 
+# 같은 아이디 열합치기
 for(i in 1:n){
   #temp = 같은 아이디의 배열에서의 index 값 저장
   temp<-grep(paste("^",df$주문자ID[i],"$", sep=""), df$주문자ID)
+
+
+################################ Report4 - 회원별 주문일시 누적 ################################
+  ####### 주문일시 배열 저장
+  # 임시 데이터프레임에 주문자ID[i]의 주문일시 저장
+  df_temp <- as.data.frame(c(df$주문자ID[i],as.character(df$주문일시[temp])))
+  names(df_temp) <- c(i)
+  df_temp<-as.data.frame(t(df_temp))
+  names(df_temp) <- c("ID",sum(!is.na(df_report4[i,])):(length(temp)+sum(!is.na(df_report4[i,]))-1))
+  
+  # 반복문에서 반복할 몇번째 주문인지에 관한 index값 지정
+  start_index <- as.numeric(colnames(df_temp[2]))
+  end_index   <- as.numeric(colnames(df_temp[length(temp)+1]))
+  # index 위치가 NA일때 값 입력, 에러발생시 에러리포트 출력
+  for(j in start_index:end_index){
+    if(!is.na(df_report4[i,(j+1)])){
+      print("ERROR:report4 is not NA")
+      print("j is ")
+      print(j)
+      break
+    }
+    if(is.na(df_report4[i,(j+1)])){
+      df_report4[i,(j+1)] <- df_temp[j+1]
+    }
+  }
+  # 임시 데이터 프레임 삭제
+  rm(df_temp)
+################################################################################################
+
+  
+  
   # 중복 존재 시
   if(length(temp)>1){
     # 결제금액 합치기
@@ -66,12 +114,16 @@ for(i in 1:n){
     
     # df_report1 첫주문일자 갱신
     df$주문일시[i] <- min(df$주문일시[temp])
-    # line68를 통해 업데이트 된 첫주문일자와 동일한 주문의 주문번호로 첫주문번호 갱신
+    
+    # line116를 통해 업데이트 된 첫주문일자와 동일한 주문의 주문번호로 첫주문번호 갱신
     df$주문번호[i] <- df$주문번호[temp[which.min(df$주문일시[temp])]]
-    
-    # df 주문주기 평균
-    df$주문주기[i] <- mean(as.numeric(diff(df$주문일시[temp])))
-    
+    # ############################################################################################################
+    # ########################Date형으로 변환이 안되어 연산이 char로 진행돼 오류뜸
+    # # df 주문주기 평균
+    # df$주문주기[i] <- mean(diff(as.numeric(df_report4[i,2:sum(!is.na(df_report4[i,]))])))
+    # as.Date(df_report4[,2:sum(!is.na(df_report4))],'%Y-%m-%d')
+    # 
+    # ############################################################################################################
     # df에서 아이디 중복행 삭제
     df <- df[-temp[c(-1)],]
     n<-n-length(temp)+1
@@ -83,6 +135,14 @@ for(i in 1:n){
   df$주문횟수[i] <- length(temp)
   if(i==n) {break}
 }
+
+# df_report4에서 행 전부가 NA값인 열 제거
+df_report4 <- df_report4[,colSums(is.na(df_report4))<nrow(df_report4)]
+
+# report4 - 회원별 주문일시 누적 결과 출력
+df_report4[is.na(df_report4)]<-""
+dir_name <- paste(dir_name,'/',report4,sep="")
+write.csv(df_report4,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 
 # 소수점 버린 평균값
 MEAN_payment <- as.integer(mean(df$총.결제금액))
@@ -100,13 +160,14 @@ df_report1$평균주문주기 <- paste(as.character(df_report1$평균주문주�
 df_report1$총주문금액 <- paste(as.character(df_report1$총주문금액),"원", sep = "")
 df_report1$주문횟수 <- paste(as.character(df_report1$주문횟수),"회", sep = "")
 
-# 파일 생성
-dir_name <- paste(dir_name,'/',report1,sep="")
+# 결과 출력
+dir_name <- gsub(report4,"",dir_name)
+dir_name <- paste(dir_name,report1,sep="")
 write.csv(df_report1,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 ###############################################################################
 
 
-################################### Report2 ###################################
+####################### Report2 - 평균주문주기별 회원수 #######################
 # 데이터프레임 선언
 df_report1$평균주문주기 <- as.numeric(gsub("일","",df_report1$평균주문주기))
 df_report2 <- data.frame(matrix(nrow=(max(df_report1$평균주문주기)%/%10)+2,ncol=2))
@@ -137,7 +198,7 @@ dir_name <- paste(dir_name,report2,sep="")
 write.csv(df_report2,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 ###############################################################################
 
-################################### Report3 ###################################
+######################### Report3 - 주문횟수별 회원수 #########################
 # 데이터프레임 선언
 df_report1$주문횟수 <- as.numeric(gsub("회","",df_report1$주문횟수))
 df_report3 <- data.frame(matrix(nrow=max(df_report1$주문횟수),ncol=2))
