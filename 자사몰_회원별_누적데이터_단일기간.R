@@ -89,23 +89,26 @@ for(i in 1:n){
   # 반복문에서 반복할 몇번째 주문인지에 관한 index값 지정
   start_index <- as.numeric(colnames(df_temp[2]))
   end_index   <- as.numeric(colnames(df_temp[length(temp)+1]))
+  # start_index와 end_index가 몇번째 열인지 기입
+  start_col_num <- start_index+1
+  end_col_num <- end_index+1
+  
   # index 위치가 NA일때 값 입력, 에러발생시 에러리포트 출력
-  for(j in start_index:end_index){
-    if(!is.na(df_report4[i,(j+1)])){
+  k<-2
+  for(j in start_col_num:end_col_num){
+    if(!is.na(df_report4[i,j])){
       print("ERROR:report4 is not NA")
-      print("j is ")
       print(j)
+      print("번째 index")
       break
     }
-    if(is.na(df_report4[i,(j+1)])){
-      df_report4[i,(j+1)] <- df_temp[j+1]
+    if(is.na(df_report4[i,j])){
+      df_report4[i,j] <- df_temp[1,k]
+      k<-k+1
     }
   }
   # 임시 데이터 프레임 삭제
   rm(df_temp)
-################################################################################################
-
-  
   
   # 중복 존재 시
   if(length(temp)>1){
@@ -113,17 +116,18 @@ for(i in 1:n){
     df$총.결제금액[i] <- sum(df$총.결제금액[temp])
     
     # df_report1 첫주문일자 갱신
-    df$주문일시[i] <- min(df$주문일시[temp])
+    df$주문일시[i] <- df_report4[i,2]
     
-    # line116를 통해 업데이트 된 첫주문일자와 동일한 주문의 주문번호로 첫주문번호 갱신
-    df$주문번호[i] <- df$주문번호[temp[which.min(df$주문일시[temp])]]
-    # ############################################################################################################
-    # ########################Date형으로 변환이 안되어 연산이 char로 진행돼 오류뜸
-    # # df 주문주기 평균
-    # df$주문주기[i] <- mean(diff(as.numeric(df_report4[i,2:sum(!is.na(df_report4[i,]))])))
-    # as.Date(df_report4[,2:sum(!is.na(df_report4))],'%Y-%m-%d')
-    # 
-    # ############################################################################################################
+    # df_temp에 날짜 정보 갱신
+    df_temp<-df_report4[i,2:sum(!is.na(df_report4[i,]))]
+    df_temp<-as.Date(t(df_temp),"%Y-%m-%d")
+    
+    # df 주문주기 평균
+    df$주문주기[i] <- mean(diff(df_temp))
+    
+    # 임시 데이터프레임 삭제
+    rm(df_temp)
+    
     # df에서 아이디 중복행 삭제
     df <- df[-temp[c(-1)],]
     n<-n-length(temp)+1
