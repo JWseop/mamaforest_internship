@@ -62,6 +62,7 @@ countmode <- function(v) {
 # # ncol=다른 주문번호 같은 아이디 최빈값의 개수, nrow=ID개수
 m <- matrix(NA, ncol = countmode(df$주문자ID), nrow = length(unique(df$주문자ID)))
 df_report4 <- as.data.frame(m)
+rm(m)
 names(df_report4) <- c(1:ncol(df_report4))
 df_report4 <- cbind(ID=unique(df$주문자ID),df_report4)
 
