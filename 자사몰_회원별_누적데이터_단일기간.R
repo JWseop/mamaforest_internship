@@ -25,6 +25,7 @@ df <- df[!is.na(df$주문자ID),]
 # 데이터프레임에서 각각 필요한 변수만 추출 및 새로운 변수 추가
 df <- df[,c("주문번호","주문상품명","수량","주문자ID","주문자.가입일","주문일시","총.결제금액")]
 df[,"주문주기"] <- NA
+df[,"주문주기_표준편차"] <- NA
 df[,"주문횟수"] <- NA
 
 # 전처리 - 총 결제금액이 0인 데이터 제거
@@ -119,12 +120,20 @@ for(i in 1:n){
     # df_report1 첫주문일자 갱신
     df$주문일시[i] <- df_report4[i,2]
     
-    # df_temp에 날짜 정보 갱신
+    # df_temp에 df$ID[i] 아이디 주문일시 정보 입력
     df_temp<-df_report4[i,2:sum(!is.na(df_report4[i,]))]
     df_temp<-as.Date(t(df_temp),"%Y-%m-%d")
     
     # df 주문주기 평균
     df$주문주기[i] <- mean(diff(df_temp))
+    
+    # df 주문주기의 표준편차
+    if(length(diff(df_temp))==1){
+      df$주문주기_표준편차[i] <- ""
+    }
+    else{
+      df$주문주기_표준편차[i] <- sd(diff(df_temp))
+    }
     
     # 임시 데이터프레임 삭제
     rm(df_temp)
@@ -135,6 +144,7 @@ for(i in 1:n){
   }
   else if(length(temp)==1){
     df$주문주기[i]<-0
+    df$주문주기_표준편차[i]<-""
   }
   # 주문횟수
   df$주문횟수[i] <- length(temp)
@@ -149,16 +159,16 @@ df_report4[is.na(df_report4)]<-""
 dir_name <- paste(dir_name,'/',report4,sep="")
 write.csv(df_report4,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 
-# 소수점 버린 평균값
-MEAN_payment <- as.integer(mean(df$총.결제금액))
-
 # 결과 저장 및 파일 추출
-df_report1 <- data.frame(df$주문번호, df$주문일시, df$주문주기, df$주문자ID, df$총.결제금액, df$`주문횟수`)
-names(df_report1) <- c("첫주문번호","첫주문일자","평균주문주기","ID","총주문금액","주문횟수")
-df_report1 <- relocate(df_report1,c(ID,첫주문일자,첫주문번호,평균주문주기,주문횟수,총주문금액))
+df_report1 <- data.frame(df$주문번호, df$주문일시, df$주문주기, df$주문주기_표준편차, df$주문자ID, df$총.결제금액, df$`주문횟수`)
+names(df_report1) <- c("첫주문번호","첫주문일자","평균주문주기","주문주기_표준편차","ID","총주문금액","주문횟수")
+df_report1 <- relocate(df_report1,c(ID,첫주문일자,첫주문번호,평균주문주기,주문주기_표준편차,주문횟수,총주문금액))
 
 # 주문번호 기준 재정렬(주문시간 순)
 df_report1<-df_report1[order(df_report1$첫주문번호),]
+
+# 평균주문주기 소숫점 자릿수 반올림
+df_report1$평균주문주기 <- round(df_report1$평균주문주기,1)
 
 # 단위 기입이 필요한 열에 단위 추가
 df_report1$평균주문주기 <- paste(as.character(df_report1$평균주문주기),"일", sep = "")
