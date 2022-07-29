@@ -10,7 +10,7 @@ dir_name <- getwd()
 
 # 불러올 데이터 파일명 line13 '' 사이에 입력 / 위에 작성한 폴더안에 존재하는 파일이어야 함
 # 기존 누적 데이터 파일명 변경했을 시, line14~line17 '' 사이 값 수정 또는 폴더 안의 파일명 수정
-input_file <- '21.01-21.06.csv'
+input_file <- '22.01-22.06.csv'
 report1 <- '회원별_누적데이터.csv'
 report2 <- '평균주문주기별 회원 수.csv'
 report3 <- '주문횟수별 회원 수.csv'
@@ -198,14 +198,16 @@ write.csv(df_report4,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 
 # 결과 저장 및 파일 추출
 df_report1 <- data.frame(df$주문번호, df$주문일시, df$주문주기, df$주문주기_표준편차, df$주문자ID, df$총.결제금액, df$`주문횟수`)
-names(df_report1) <- c("첫주문번호","첫주문일자","평균주문주기","주문주기_표준편차","ID","총주문금액","주문횟수")
-df_report1 <- relocate(df_report1,c(ID,첫주문일자,첫주문번호,평균주문주기,주문주기_표준편차,주문횟수,총주문금액))
+names(df_report1) <- c("첫주문번호","첫주문일자","평균주문주기(일)","주문주기_표준편차(일)","ID","총주문금액(원)","주문횟수(회)")
+df_report1 <- relocate(df_report1,c(ID,첫주문일자,첫주문번호,`평균주문주기(일)`,`주문주기_표준편차(일)`,`주문횟수(회)`,`총주문금액(원)`))
 
-############ 누적 데이터 병합 
+############ 누적 데이터 병합
+# 전처리 - 기존 누적 데이터 열 이름 변경(report1과 같게 맞추기)
+names(df_report1_origin) <- c("ID","첫주문일자","첫주문번호","평균주문주기(일)","주문주기_표준편차(일)","주문횟수(회)","총주문금액(원)")
 # 전처리 - 기존 누적 데이터 실수화
-df_report1_origin$평균주문주기 <- as.numeric(gsub("일","",df_report1_origin$평균주문주기))
-df_report1_origin$총주문금액 <- as.numeric(gsub("원","",df_report1_origin$총주문금액))
-df_report1_origin$주문횟수 <- as.numeric(gsub("회","",df_report1_origin$주문횟수))
+df_report1_origin$`평균주문주기(일)` <- as.numeric(df_report1_origin$`평균주문주기(일)`)
+df_report1_origin$`총주문금액(원)` <- as.numeric(df_report1_origin$`총주문금액(원)`)
+df_report1_origin$`주문횟수(회)` <- as.numeric(df_report1_origin$`주문횟수(회)`)
 df_report1_origin$첫주문일자<-as.Date(df_report1_origin$첫주문일자, '%Y-%m-%d')
 
 df_report4[df_report4 == ""] <- NA
@@ -227,55 +229,30 @@ for(i in 1:n){
   # 중복 존재 시
   if(length(temp)>1){
     # 결제금액 합치기
-    df_report1$총주문금액[i] <- sum(df_report1$총주문금액[temp])
+    df_report1$`총주문금액(원)`[i] <- sum(df_report1$`총주문금액(원)`[temp])
     
     # df_report1 첫주문일자 갱신
     df_report1$첫주문일자[i] <- df_report4[r4_ID_index,2]
     # line109를 통해 업데이트 된 첫주문일자와 동일한 주문의 주문번호로 첫주문번호 갱신
     df_report1$첫주문번호[i] <- df_report1$첫주문번호[temp[which.min(df_report1$첫주문일자[temp])]]
     
-    # df_temp에 df$ID[i] 아이디 주문일시 정보 입력
-    df_temp<-df_report4[r4_ID_index,2:sum(!is.na(df_report4[r4_ID_index,]))]
-    df_temp<-as.Date(t(df_temp),"%Y-%m-%d")
-    
-    # df 주문주기 평균
-    df_report1$평균주문주기[i] <- mean(diff(df_temp))
-    
-    # df 주문주기의 표준편차
-    if(length(diff(df_temp))==1){
-      df_report1$주문주기_표준편차[i] <- NA
-    }
-    else{
-      df_report1$주문주기_표준편차[i] <- sd(diff(df_temp))
-    }
-    
-    # 임시 데이터프레임 삭제
-    rm(df_temp)
-    
     # 주문횟수 합산
-    df_report1$주문횟수[i] <- sum(df_report1$주문횟수[temp])
+    df_report1$`주문횟수(회)`[i] <- sum(df_report1$`주문횟수(회)`[temp])
     
     # df_report1 중복 삭제
     df_report1 <- df_report1[-temp[c(-1)],]
     n<-n-length(temp)+1
   }
-  else if(length(temp)==1){
-    df_report1$평균주문주기[i]<-mean(df_report1$평균주문주기[temp])
-  }
+  
   if(i==n) {break}
 }
 
 # 평균주문주기, 주문주기_표준편차 소숫점 자릿수 반올림
-df_report1$평균주문주기 <- round(df_report1$평균주문주기,1)
-df_report1$주문주기_표준편차[!is.na(df_report1$주문주기_표준편차)]<-round(as.numeric(df_report1[!is.na(df_report1$주문주기_표준편차),5]),1)
+df_report1$`평균주문주기(일)` <- round(df_report1$`평균주문주기(일)`,1)
+df_report1$`주문주기_표준편차(일)`[!is.na(df_report1$`주문주기_표준편차(일)`)]<-round(as.numeric(df_report1[!is.na(df_report1$`주문주기_표준편차(일)`),5]),1)
 
 # 결측값 처리
 df_report1[is.na(df_report1)] <- ""
-
-# 단위 기입이 필요한 열에 단위 추가
-df_report1$평균주문주기 <- paste(as.character(df_report1$평균주문주기),"일", sep = "")
-df_report1$총주문금액 <- paste(as.character(df_report1$총주문금액),"원", sep = "")
-df_report1$주문횟수 <- paste(as.character(df_report1$주문횟수),"회", sep = "")
 
 # 파일 생성
 dir_name <- gsub(report4,"",dir_name)
@@ -285,27 +262,24 @@ write.csv(df_report1,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 
 ####################### Report2 - 평균주문주기별 회원수 #######################
 # 데이터프레임 선언
-df_report1$평균주문주기 <- as.numeric(gsub("일","",df_report1$평균주문주기))
-df_report2 <- data.frame(matrix(nrow=(max(df_report1$평균주문주기)%/%10)+2,ncol=2))
-names(df_report2) <- c("주문주기","회원 수")
+df_report1$`평균주문주기(일)` <- as.numeric(df_report1$`평균주문주기(일)`)
+df_report2 <- data.frame(matrix(nrow=(max(df_report1$`평균주문주기(일)`)%/%10)+2,ncol=2))
+names(df_report2) <- c("주문주기(일)","회원 수(명)")
 # 인자 초기화
-for(i in 0:(length(df_report2$주문주기)-1)){
-  df_report2$주문주기[i+1]<- paste((i-1)*10+1,"일~",i*10,"일",sep="")
+for(i in 0:(length(df_report2$`주문주기(일)`)-1)){
+  df_report2$`주문주기(일)`[i+1]<- paste((i-1)*10+1,"일~",i*10,"일",sep="")
 }
-df_report2$주문주기[1]<-'0일'
-df_report2$`회원 수`[is.na(df_report2$`회원 수`)] <- 0
+df_report2$`주문주기(일)`[1]<-'0일'
+df_report2$`회원 수(명)`[is.na(df_report2$`회원 수(명)`)] <- 0
 # 주문주기 구간별 회원 수 count
 for(i in 1:length(df_report1$ID)){
-  if(df_report1$평균주문주기[i]==0){
-    df_report2$`회원 수`[1]<-as.numeric(df_report2$`회원 수`[1])+1
+  if(df_report1$`평균주문주기(일)`[i]==0){
+    df_report2$`회원 수(명)`[1]<-as.numeric(df_report2$`회원 수(명)`[1])+1
   }
   else{
-    j<-((df_report1$평균주문주기[i]-1)%/%10)+2
-    df_report2$`회원 수`[j]<-as.numeric(df_report2$`회원 수`[j])+1
+    j<-((df_report1$`평균주문주기(일)`[i]-1)%/%10)+2
+    df_report2$`회원 수(명)`[j]<-as.numeric(df_report2$`회원 수(명)`[j])+1
   }
-}
-for(i in 1:length(df_report2$`회원 수`)){
-  df_report2$`회원 수`[i]<-paste(df_report2$`회원 수`[i],'명',sep="")
 }
 
 # 결과 출력
@@ -316,23 +290,18 @@ write.csv(df_report2,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 
 ######################### Report3 - 주문횟수별 회원수 #########################
 # 데이터프레임 선언
-df_report1$주문횟수 <- as.numeric(gsub("회","",df_report1$주문횟수))
-df_report3 <- data.frame(matrix(nrow=max(df_report1$주문횟수),ncol=2))
-names(df_report3) <- c("주문횟수","회원 수")
+df_report3 <- data.frame(matrix(nrow=max(df_report1$`주문횟수(회)`),ncol=2))
+names(df_report3) <- c("주문횟수(회)","회원 수(명)")
 # 인자 초기화
-for(i in 1:length(df_report3$주문횟수)){
-  df_report3$주문횟수[i]<- paste(i,"회",sep="")
+for(i in 1:length(df_report3$`주문횟수(회)`)){
+  df_report3$`주문횟수(회)`[i]<- i
 }
-df_report3$`회원 수`[is.na(df_report3$`회원 수`)] <- 0
+df_report3$`회원 수(명)`[is.na(df_report3$`회원 수(명)`)] <- 0
 # 주문횟수 구간별 회원 수 count
 for(i in 1:length(df_report1$ID)){
-  j<-df_report1$주문횟수[i]
-  df_report3$`회원 수`[j]<-as.numeric(df_report3$`회원 수`[j])+1
+  j<-df_report1$`주문횟수(회)`[i]
+  df_report3$`회원 수(명)`[j]<-as.numeric(df_report3$`회원 수(명)`[j])+1
 }
-for(i in 1:length(df_report3$`회원 수`)){
-  df_report3$`회원 수`[i]<-paste(df_report3$`회원 수`[i],'명',sep="")
-}
-
 
 # 결과 출력
 dir_name <- gsub(report2,"",dir_name)
