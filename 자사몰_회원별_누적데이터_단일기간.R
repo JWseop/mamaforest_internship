@@ -182,12 +182,14 @@ write.csv(df_report1,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 df_report1$`평균주문주기(일)` <- as.numeric(df_report1$`평균주문주기(일)`)
 df_report2 <- data.frame(matrix(nrow=(max(df_report1$`평균주문주기(일)`)%/%10)+2,ncol=2))
 names(df_report2) <- c("주문주기(일)","회원 수(명)")
+
 # 인자 초기화
 for(i in 0:(length(df_report2$`주문주기(일)`)-1)){
   df_report2$`주문주기(일)`[i+1]<- paste((i-1)*10+1,"일~",i*10,"일",sep="")
 }
 df_report2$`주문주기(일)`[1]<-'0일'
 df_report2$`회원 수(명)`[is.na(df_report2$`회원 수(명)`)] <- 0
+
 # 주문주기 구간별 회원 수 count
 for(i in 1:length(df_report1$ID)){
   if(df_report1$`평균주문주기(일)`[i]==0){
@@ -209,11 +211,13 @@ write.csv(df_report2,file=dir_name,row.names = FALSE,fileEncoding="cp949")
 # 데이터프레임 선언
 df_report3 <- data.frame(matrix(nrow=max(df_report1$주문횟수),ncol=2))
 names(df_report3) <- c("주문횟수(회)","회원 수(명)")
+
 # 인자 초기화
 for(i in 1:length(df_report3$`주문횟수(회)`)){
   df_report3$`주문횟수(회)`[i]<- i
 }
 df_report3$`회원 수(명)`[is.na(df_report3$`회원 수(명)`)] <- 0
+
 # 주문횟수 구간별 회원 수 count
 for(i in 1:length(df_report1$ID)){
   j<-df_report1$`주문횟수(회)`[i]
